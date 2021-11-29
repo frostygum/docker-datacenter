@@ -1,0 +1,94 @@
+version: '3.9'
+
+services:
+
+  namenode:
+    image: hadoop-base/namenode
+    build:
+      context: ./hadoop/namenode
+      dockerfile: Dockerfile
+    networks:
+      - data-center
+    volumes:
+      - namenode:/hadoop/dfs/name
+    env_file:
+      - ./hadoop.env
+    environment:
+      - CLUSTER_NAME=test
+    ports:
+      - 9870:9870
+    deploy:
+      mode: replicated
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        max_attempts: 5
+
+  datanode:
+    image: hadoop-base/datanode
+    build:
+      context: ./hadoop/datanode
+      dockerfile: Dockerfile
+    networks:
+      - data-center
+    volumes:
+      - datanode:/hadoop/dfs/data
+    env_file:
+      - ./hadoop.env
+    environment:
+      SERVICE_PRECONDITION: "namenode:9000"
+    ports:
+      - 9864:9864
+    deploy:
+      mode: replicated
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        max_attempts: 5
+
+  resourcemanager:
+    image: hadoop-base/resourcemanager
+    build:
+      context: ./hadoop/resourcemanager
+      dockerfile: Dockerfile
+    networks:
+      - data-center
+    env_file:
+      - ./hadoop.env
+    environment:
+      SERVICE_PRECONDITION: "namenode:9000 datanode:9864"
+    ports:
+      - 8088:8088
+    deploy:
+      mode: global
+      restart_policy:
+        condition: on-failure
+        max_attempts: 5
+    healthcheck:
+      disable: true
+
+  nodemanager:
+    image: hadoop-base/nodemanager
+    build:
+      context: ./hadoop/nodemanager
+      dockerfile: Dockerfile
+    networks:
+      - data-center
+    env_file:
+      - ./hadoop.env
+    environment:
+      SERVICE_PRECONDITION: "namenode:9000 datanode:9864 resourcemanager:8088"
+    deploy:
+      mode: global
+      restart_policy:
+        condition: on-failure
+        max_attempts: 5
+
+volumes:
+  datanode:
+  namenode:
+
+networks:
+  data-center:
+    external:
+      name: data-center

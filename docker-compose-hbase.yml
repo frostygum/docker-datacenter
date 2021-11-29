@@ -1,0 +1,73 @@
+version: "3.9"
+
+services:
+
+  zoo:
+    image: zookeeper:3.4.10
+    networks:
+      - data-center
+    volumes:
+      - zoo_data:/data
+      - zoo_logs:/datalog
+      - zoo_logs:/logs
+    environment:
+      ZOO_MY_ID: 1
+      ZOO_SERVERS: server.1=0.0.0.0:2888:3888
+    ports:
+      - 2181:2181
+    deploy:
+      mode: replicated
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        max_attempts: 5
+
+  hbase-master:
+    image: hbase-base/master
+    build:
+      context: ./hbase/hmaster
+      dockerfile: Dockerfile
+    networks:
+      - data-center
+    env_file:
+      - ./hbase.env
+    environment:
+      SERVICE_PRECONDITION: "namenode:9000 datanode:9864 zoo:2181"
+    ports:
+      - 16010:16010
+    deploy:
+      mode: replicated
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        max_attempts: 5
+
+  regionserver:
+    image: hbase-base/regionserver
+    build:
+      context: ./hbase/hregionserver
+      dockerfile: Dockerfile
+    networks:
+      - data-center
+    env_file:
+      - ./hbase.env
+    environment:
+      HBASE_CONF_hbase_regionserver_hostname: regionserver
+      SERVICE_PRECONDITION: "namenode:9000 datanode:9864 zoo:2181 hbase-master:16010"
+    ports:
+      - 16030:16030
+    deploy:
+      mode: replicated
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        max_attempts: 5
+
+volumes:
+  zoo_data:
+  zoo_logs:
+
+networks:
+  data-center:
+    external:
+      name: data-center

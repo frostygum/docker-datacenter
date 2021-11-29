@@ -1,0 +1,23 @@
+version: '3.9'
+
+services:
+
+  hadoop-base:
+    image: hadoop-base
+    build:
+      context: ./hadoop/base
+      dockerfile: Dockerfile
+      args:
+        version: "3.2.2"
+    env_file:
+      - ./hadoop.env
+      
+  hbase-base:
+    image: hbase-base
+    build:
+      context: ./hbase/base
+      dockerfile: Dockerfile
+      args:
+        version: "2.4.8"
+    env_file:
+      - ./hbase.env
